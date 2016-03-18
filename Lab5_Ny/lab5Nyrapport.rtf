@@ -1,0 +1,114 @@
+{\rtf1\ansi\ansicpg1252\deff0\deflang1033{\fonttbl{\f0\fswiss\fcharset0 Arial;}{\f1\fnil Courier New;}{\f2\fnil\fcharset0 Courier New;}}
+{\colortbl ;\red127\green0\blue85;\red0\green0\blue0;\red0\green80\blue50;\red63\green127\blue95;\red100\green40\blue128;\red212\green212\blue212;\red0\green0\blue192;\red42\green0\blue255;}
+{\*\generator Msftedit 5.41.15.1516;}\viewkind4\uc1\pard\lang1053\f0\fs20 LAB 5\line\line Definierade globala variabler enligt\line\cf1\b\f1 #define\cf2\b0  STACK_SIZE 1000\cf0\par
+\par
+\cf3 osThreadId\cf2  defaultTaskHandle;\cf0\par
+\cf3 osMutexId\cf2  myMutex01Handle;\cf0\par
+\cf3 TaskHandle_t\cf2  xHandleToBlink10Task = NULL;\line\line\f2 Handtaget till blink10-tasket m\'e5ste vara en global variabel d\'e4rf\'f6r att den ska \par
+kunna f\'f6rs\'e4ttas i "sleep" respektive "resume" av tasket som k\'e4nner av \line knapp B2.\par
+\par
+D\'e4rfefter f\'f6ljer deklarationer av egna funktionsprototyper\line\cf1\b\f1 void\cf2\b0  \b vTaskCodeBlink1\b0 ( \cf1\b void\cf2\b0  * pvParameters );\cf0\par
+\cf1\b void\cf2\b0  \b vTaskCodeBlink10\b0 ( \cf1\b void\cf2\b0  * pvParameters );\cf0\par
+\cf1\b void\cf2\b0  \b vTaskCodeCheckButton\b0 ( \cf1\b void\cf2\b0  * pvParameters );\cf0\par
+\cf1\b void\cf2\b0  \b vOtherFunction\b0 ( \cf1\b void\cf2\b0  );\line\line\f2 Eftersom jag vald att generera en mutex i STM32CubeMx, s\'e5 genererades kod\line som initierad mutexen, \'e5t mig. Denna placerades in under HAL_init();\line Cube valde namnet myMutex01. \line Lite eftes\'f6kningar gav vid handen att detta namn anv\'e4nds i en makroexpansion.\line\line Denna kod:\line\line\cf4\f1 /* USER CODE BEGIN RTOS_MUTEX */\cf0\par
+\cf2   \cf4 /* add \ul mutexes\ulnone , ... */\cf0\par
+\cf2   osMutexDef(myMutex01);\cf0\par
+\cf2   myMutex01Handle = \cf5\b osMutexCreate\cf2\b0 (osMutex(myMutex01));\par
+\par
+\f2 Anv\'e4nder sig av f\'f6ljande makro:\f1\par
+\line\cf1\b #define\cf2\b0  \highlight6 osMutexDef\highlight0 (name)  \\\cf0\par
+\cf1\b const\cf2\b0  osMutexDef_t os_mutex_def_\cf1\b ##\cf2\b0 name = \{ 0 \}\par
+\par
+\f2 som resuterar i\line\cf1\b\f1 const\cf2\b0  osMutexDef_t os_mutex_def_myMutex01 = \{ 0 \}\cf0\par
+\cf2 myMutex01Handle\f2  =  \cf5\b\f1 osMutexCreate\cf2\b0 (\cf1\b const\cf2\b0  osMutexDef_t os_mutex_def_myMutex01\f2  = \{0\}\f1  );\line\line\f2 Konstigt att kompilatron inte br\'e5kar d\'e4rf\'f6r att hela denna harang anv\'e4nds som inparameter!?\f1\par
+\f2 Testade detta och kompilatorn klagade. Testade anropet\line\cf5\b\f1 osMutexCreate\cf2\b0 (os_mutex_def_myMutex01 );\line\f2 men det fungerade inte heller ?!?!\line\line //Du ser Jens, du har gett oss f\'f6r lite C-programmering med preprocessor anv\'e4ndning!\f1\line\f2\line\par
+\par
+\line Initiering av tasken g\'f6rs genom anropet av vOtherFunction()\line denna lades under skapandet av default tasket.\line\par
+\f1 osThreadDef(defaultTask, StartDefaultTask, \cf7\i osPriorityNormal\cf2\i0 , 0, 128);\cf0\par
+\cf2 defaultTaskHandle = \cf5\b osThreadCreate\cf2\b0 (osThread(defaultTask), NULL);\cf0\par
+\cf2 vOtherFunction();\line\line\line\line\f2 Denna funktion initerar tasken p\'e5 detta s\'e4tt:\cf0\f1\par
+\par
+\cf1\b void\cf2\b0  \b vOtherFunction\b0 ( \cf1\b void\cf2\b0  )\cf0\par
+\cf2\{\cf0\par
+\cf1\b static\cf2\b0  \cf1\b unsigned\cf2\b0  \cf1\b char\cf2\b0  ucParameterToPass;\cf0\par
+\cf1\b static\cf2\b0  \cf3 TaskHandle_t\cf2  xHandle = NULL;\cf0\par
+\cf1\b static\cf2\b0  \cf3 TaskHandle_t\cf2  xHandle3 = NULL;\cf0\par
+\par
+\cf2\tab xTaskCreate( vTaskCodeBlink1, \cf8 "NAME1"\cf2 , STACK_SIZE, &ucParameterToPass, tskIDLE_PRIORITY +1,\cf0\par
+\cf2                &xHandle );\cf0\par
+\par
+\cf2\tab xTaskCreate( vTaskCodeBlink10, \cf8 "NAME2"\cf2 , STACK_SIZE, &ucParameterToPass, tskIDLE_PRIORITY +1,\cf0\par
+\cf2                &xHandleToBlink10Task );\cf0\par
+\cf2\tab\cf5\b vTaskSuspend\cf2\b0 ( xHandleToBlink10Task );\cf0\par
+\par
+\cf2\tab xTaskCreate( vTaskCodeCheckButton, \cf8 "NAME3"\cf2 , STACK_SIZE, &ucParameterToPass, tskIDLE_PRIORITY +2,\cf0\par
+\cf2                &xHandle3 );\cf0\par
+\par
+\cf2  \}\cf0\par
+\lang1033\f0 Det finns ingen anledning att deklarera taskhandtagen som static, d\'e4rf\'f6r att funktionen anropas bara en g\'e5ng.\line Handtaget till blink10 tasket \'e4r en global varibel s\'e5som jag beskrivit tidigare.\line Detta suspenderas direkt efter att det skapats.\line\line F\'f6rsta taskfunktionen \'e4r \cf2\lang1053\f1 vTaskCodeBlink1\f2 : Denna k\'f6rs varje 500ms. Den l\'e5ter dioden vara t\'e4nd under 500ms, och d\'e4refter l\'e5ter den dioden vara sl\'e4ckt under 500ms. Periodtiden f\'f6r blinkningen \'e4r s\'e5ledes 1000ms. Dioden blinkar med 1Hz.\line\cf0\lang1033\f0\line\cf1\b\f1 void\cf2\b0  \b vTaskCodeBlink1\b0 ( \cf1\b void\cf2\b0  * pvParameters )\cf0\par
+\cf2\{\cf0\par
+\par
+\cf2\tab  \cf3 TickType_t\cf2  xLastWakeTime;\cf0\par
+\cf2\tab  \cf1\b const\cf2\b0  \cf3 TickType_t\cf2  xFrequency = 500;\lang1053\f2   //Periodtid 500ms\cf0\lang1033\f1\par
+\par
+\cf2\tab      \cf4 // \ul Initialise\ulnone  the xLastWakeTime variable with the current time.\cf0\par
+\cf2\tab      xLastWakeTime = \cf5\b xTaskGetTickCount\cf2\b0 ();\cf0\par
+\par
+\cf2   \cf1\b for\cf2\b0 ( ;; )\cf0\par
+\cf2   \{\cf0\par
+\cf2\tab   \cf4 // Wait for the next cycle.\cf0\par
+\cf2\tab   \cf5\b vTaskDelayUntil\cf2\b0 ( &xLastWakeTime, xFrequency );\cf0\par
+\cf2   \cf0\par
+\cf2\tab   \cf1\b if\cf2\b0 ( xSemaphoreTake( myMutex01Handle, ( \cf3 TickType_t\cf2  ) 10 ) == pdTRUE )\lang1053\f2 //Ta semaforen om det g\'e5r\cf0\lang1033\f1\par
+\cf2\tab   \{\cf0\par
+\cf2\tab\tab   \cf5\b HAL_GPIO_TogglePin\cf2\b0 (LD2_GPIO_Port, LD2_Pin);\lang1053\f2  //Toggla 1 g\'e5ng\cf0\lang1033\f1\par
+\cf2\tab\tab   xSemaphoreGive( myMutex01Handle );\lang1053\f2           //Sl\'e4pp semaforen\cf0\lang1033\f1\par
+\cf2\tab   \}\cf0\par
+\cf2   \}\cf0\par
+\cf2\}\par
+\par
+\lang1053\f2 Tasket som k\'e4nner av knappen jobbar med en h\'f6gre frekvens. Denna kollar knappen efter varje 10ms, och har h\'f6gst prioritet.\line\cf1\b\f1 void\cf2\b0  \b vTaskCodeCheckButton\b0 ( \cf1\b void\cf2\b0  * pvParameters )\cf0\par
+\cf2\{\cf0\par
+\par
+\par
+\cf2\tab  \cf3 TickType_t\cf2  xLastWakeTime;\cf0\par
+\cf2\tab  \cf1\b const\cf2\b0  \cf3 TickType_t\cf2  xFrequency = 10;\cf0\par
+\cf2\tab  xLastWakeTime = \cf5\b xTaskGetTickCount\cf2\b0 ();\cf0\par
+\par
+\cf2   \cf1\b for\cf2\b0 ( ;; )\cf0\par
+\cf2   \{\cf0\par
+\cf2\tab   \cf4 // Wait for the next cycle.\cf0\par
+\cf2\tab   \cf5\b vTaskDelayUntil\cf2\b0 ( &xLastWakeTime, xFrequency );\cf0\par
+\cf2       \cf4 /* Task code goes here. */\cf0\par
+\par
+\cf2\tab   \cf1\b if\cf2\b0 (\cf5\b HAL_GPIO_ReadPin\cf2\b0 (B1_GPIO_Port, B1_Pin) == 0)\{\f2  \tab //Kolla om knappen g\'e5tt l\'e5g..\cf0\f1\par
+\cf2\tab\f2\tab\cf5\b\f1 vTaskResume\cf2\b0 (xHandleToBlink10Task);\f2          \tab //V\'e4ck upp snabb-blinkningen\cf0\f1\par
+\cf2           \f2\tab\cf5\b\f1 vTaskDelayUntil\cf2\b0 ( &xLastWakeTime, 2000);\f2         \tab //Blockera egen exekvering i 2000ms\cf0\f1\par
+\cf2           \f2\tab\cf5\b\f1 vTaskSuspend\cf2\b0 ( xHandleToBlink10Task );\f2\tab\tab //Suspendera snabbblinkar tasket\cf0\f1\par
+\cf2\tab   \}\cf0\par
+\cf2   \}\cf0\par
+\cf2\}\par
+\par
+\f2 Snabbblinkar tasket ser ut p\'e5 samma s\'e4tt som blink1 tasket, f\'f6rutom att periodtiden 50ms dvs. \line koden l\'e5ter dioden vara t\'e4nd under 50ms och d\'e4refter sl\'e4ckt under 50ms. Blinkningen period \'e4r allts\'e5 \line 100ms, eller 10Hz.\line\cf1\b\f1 void\cf2\b0  \b vTaskCodeBlink10\b0 ( \cf1\b void\cf2\b0  * pvParameters )\cf0\par
+\cf2\{\cf0\par
+\par
+\cf2\tab  \cf3 TickType_t\cf2  xLastWakeTime;\cf0\par
+\cf2\tab  \cf1\b const\cf2\b0  \cf3 TickType_t\cf2  xFrequency = \f2 5\f1 0;\cf0\par
+\par
+\cf2\tab      \cf4 // \ul Initialise\ulnone  the xLastWakeTime variable with the current time.\cf0\par
+\cf2\tab      xLastWakeTime = \cf5\b xTaskGetTickCount\cf2\b0 ();\cf0\par
+\par
+\cf2   \cf1\b for\cf2\b0 ( ;; )\cf0\par
+\cf2   \{\cf0\par
+\cf2\tab   \cf4 // Wait for the next cycle.\cf0\par
+\cf2\tab   \cf5\b vTaskDelayUntil\cf2\b0 ( &xLastWakeTime, xFrequency );\cf0\par
+\cf2       \cf4 /* Task code goes here. */\cf0\par
+\cf2\tab   \cf1\b if\cf2\b0 ( xSemaphoreTake( myMutex01Handle, ( \cf3 TickType_t\cf2  ) 10 ) == pdTRUE )\f2  //Ta semafor om m\'f6jligt\cf0\f1\par
+\cf2\tab   \{\cf0\par
+\cf2\tab\tab   \cf5\b HAL_GPIO_TogglePin\cf2\b0 (LD2_GPIO_Port, LD2_Pin);\f2                     //Toggla 1 g\'e5ng\cf0\f1\par
+\cf2\tab\tab   xSemaphoreGive( myMutex01Handle );\f2\tab\tab\tab\tab      //Sl\'e4pp semaforen\cf0\f1\par
+\cf2\tab   \}\cf0\par
+\cf2   \}\cf0\par
+\cf2\}\f2\line\cf0\lang1033\f0\par
+}
+ 
